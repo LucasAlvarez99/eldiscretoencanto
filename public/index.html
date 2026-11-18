@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>El Discreto Encanto · Café de especialidad</title>
+  <meta name="description" content="Café de especialidad, pastelería y eventos. Mirá el menú, pedí por WhatsApp y enterate de lo que viene.">
+  <meta property="og:title" content="El Discreto Encanto">
+  <meta property="og:description" content="Café que no hace ruido. Pero se nota.">
+  <meta property="og:image" content="/assets/logo.png">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:ital,opsz,wght@0,9..144,600..900;1,9..144,600..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker__track" id="ticker"></div>
+  </div>
+
+  <header class="nav">
+    <a class="nav__brand" href="#top">
+      <img src="/assets/logo.png" alt="" width="40" height="40">
+      <span id="brandName">El Discreto Encanto</span>
+    </a>
+    <nav class="nav__links">
+      <a href="#menu">Menú</a>
+      <a href="#eventos">Eventos</a>
+      <a href="#visitanos">Visitanos</a>
+      <a class="btn btn--small" id="navWa" href="#" target="_blank" rel="noopener">Pedí</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero__text">
+        <p class="kicker">Café de especialidad</p>
+        <h1>Entrá sin <em>hacer ruido.</em><br>Salí con ganas de volver.</h1>
+        <p class="hero__sub" id="tagline">Café de especialidad, pastelería y eventos.</p>
+        <div class="hero__cta">
+          <a class="btn" href="#menu">Ver el menú</a>
+          <a class="btn btn--ghost" id="heroWa" href="#" target="_blank" rel="noopener">Pedir por WhatsApp</a>
+        </div>
+        <ul class="chips">
+          <li>☕ Café de especialidad</li>
+          <li>🥐 Pastelería del día</li>
+          <li>🎟️ Eventos</li>
+        </ul>
+      </div>
+      <div class="hero__art">
+        <img class="hero__logo" src="/assets/logo.png" alt="El Discreto Encanto" width="260" height="260">
+        <img class="hero__photo" src="/assets/taza.png" alt="Taza de El Discreto Encanto sobre la mesa" loading="eager">
+      </div>
+    </section>
+
+    <!-- MENÚ -->
+    <section class="section" id="menu">
+      <div class="section__head">
+        <h2>El menú</h2>
+        <p>Tocá el <b>+</b>, armá tu pedido y mandalo por WhatsApp.</p>
+      </div>
+      <div class="pills" id="pills" role="tablist"></div>
+      <div id="menuList" class="menu"></div>
+    </section>
+
+    <!-- EVENTOS -->
+    <section class="section section--dark" id="eventos">
+      <div class="section__head">
+        <h2>Eventos</h2>
+        <p>Lo que pasa en el café. Sumate.</p>
+      </div>
+      <div class="events">
+        <div class="cal" id="cal"></div>
+        <div class="events__list">
+          <h3 id="eventsTitle">Próximos eventos</h3>
+          <div id="eventsList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VISITANOS -->
+    <section class="section" id="visitanos">
+      <div class="visit">
+        <img class="visit__photo" src="/assets/frente.png" alt="Frente del local con el cartel de la D" loading="lazy">
+        <div class="visit__text">
+          <h2>Visitanos</h2>
+          <p id="address" class="visit__line"></p>
+          <p id="hours" class="visit__line"></p>
+          <div class="hero__cta">
+            <a class="btn" id="mapsBtn" href="#" target="_blank" rel="noopener">Cómo llegar</a>
+            <a class="btn btn--ghost" id="waBtn" href="#" target="_blank" rel="noopener">WhatsApp</a>
+            <a class="btn btn--ghost" id="igBtn" href="#" target="_blank" rel="noopener">Instagram</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <img src="/assets/logo.png" alt="" width="36" height="36">
+    <span id="footName">El Discreto Encanto</span>
+    <span class="footer__sep">·</span>
+    <span id="footPhone"></span>
+  </footer>
+
+  <!-- Barra de pedido -->
+  <div class="cart" id="cart" hidden>
+    <div class="cart__info"><b id="cartCount">0</b> productos · <b id="cartTotal">$0</b></div>
+    <button class="btn btn--small btn--ghost-dark" id="cartClear" type="button">Vaciar</button>
+    <button class="btn btn--small" id="cartSend" type="button">Pedir por WhatsApp</button>
+  </div>
+
+  <script src="/js/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Panel · El Discreto Encanto</title>
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:ital,opsz,wght@0,9..144,600..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+  <!-- Login -->
+  <section id="login" class="login" hidden>
+    <form class="card login__card" id="loginForm">
+      <img src="/assets/logo.png" alt="" width="84" height="84">
+      <h1>Panel del café</h1>
+      <label>Contraseña
+        <input type="password" id="password" autocomplete="current-password" required autofocus>
+      </label>
+      <button class="btn" type="submit">Entrar</button>
+      <p class="error" id="loginError"></p>
+    </form>
+  </section>
+
+  <!-- App -->
+  <div id="app" hidden>
+    <header class="top">
+      <div class="top__brand"><img src="/assets/logo.png" alt="" width="34" height="34"> Panel · <span id="siteName">El Discreto Encanto</span></div>
+      <nav class="tabs" id="tabs">
+        <button data-tab="menu" class="is-active">Menú</button>
+        <button data-tab="events">Eventos</button>
+        <button data-tab="settings">Ajustes</button>
+      </nav>
+      <div class="top__right">
+        <a href="/" target="_blank" rel="noopener">Ver sitio ↗</a>
+        <button class="link" id="logout">Salir</button>
+      </div>
+    </header>
+
+    <div class="banner" id="pwBanner" hidden>
+      ⚠️ Estás usando la contraseña por defecto. Definí <code>ADMIN_PASSWORD</code> en el servidor antes de publicar.
+    </div>
+
+    <main class="wrap">
+      <!-- MENÚ -->
+      <section id="tab-menu">
+        <div class="bar">
+          <h2>Menú y precios</h2>
+          <form class="inline" id="catForm">
+            <input id="catName" placeholder="Nueva categoría (ej. Brunch)" maxlength="60" required>
+            <button class="btn btn--small" type="submit">Agregar categoría</button>
+          </form>
+        </div>
+        <p class="hint">Los cambios se guardan solos al salir de cada campo. El sitio se actualiza al instante.</p>
+        <div id="menuAdmin"></div>
+      </section>
+
+      <!-- EVENTOS -->
+      <section id="tab-events" hidden>
+        <div class="bar"><h2>Eventos</h2></div>
+        <form class="card evform" id="eventForm">
+          <h3>Nuevo evento</h3>
+          <div class="grid">
+            <label>Título <input id="evTitle" maxlength="90" placeholder="Noche de jazz" required></label>
+            <label>Fecha <input id="evDate" type="date" required></label>
+            <label>Hora <input id="evTime" type="time"></label>
+          </div>
+          <label>Descripción <textarea id="evDesc" rows="2" maxlength="400" placeholder="Qué va a pasar, si hay entrada, si hay que reservar…"></textarea></label>
+          <button class="btn" type="submit">Crear evento</button>
+        </form>
+        <div id="eventsAdmin"></div>
+      </section>
+
+      <!-- AJUSTES -->
+      <section id="tab-settings" hidden>
+        <div class="bar"><h2>Ajustes del sitio</h2></div>
+        <form class="card" id="settingsForm">
+          <div class="grid">
+            <label>Nombre <input name="name" maxlength="80"></label>
+            <label>Frase de portada <input name="tagline" maxlength="160"></label>
+            <label>WhatsApp (con código de país, solo números) <input name="whatsapp" placeholder="5491178237284"></label>
+            <label>Teléfono para mostrar <input name="phoneDisplay" placeholder="11 7823-7284"></label>
+            <label>Instagram (sin @) <input name="instagram"></label>
+            <label>Dirección <input name="address" maxlength="160" placeholder="Calle 123, Barrio"></label>
+            <label>Horarios <input name="hours" maxlength="200" placeholder="Lun a Dom · 8 a 20 hs"></label>
+            <label>Link de Google Maps <input name="mapsUrl" maxlength="500"></label>
+          </div>
+          <button class="btn" type="submit">Guardar ajustes</button>
+        </form>
+        <div class="card" id="igStatus"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal historia -->
+  <div class="modal" id="storyModal" hidden>
+    <div class="modal__box">
+      <button class="modal__close" id="storyClose" aria-label="Cerrar">×</button>
+      <h3>Historia de Instagram</h3>
+      <div class="story">
+        <canvas id="storyCanvas" width="1080" height="1920"></canvas>
+        <div class="story__side">
+          <p class="hint">Formato 1080×1920. Revisá cómo quedó antes de publicar.</p>
+          <button class="btn" id="storyPublish">Publicar en Instagram</button>
+          <button class="btn btn--ghost" id="storyDownload">Descargar imagen</button>
+          <p class="hint" id="storyMsg"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+  <script src="/js/admin.js"></script>
+</body>
+</html>
