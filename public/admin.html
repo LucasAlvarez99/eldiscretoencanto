@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>Panel · El Discreto Encanto</title>
-  <link rel="icon" href="/assets/logo.png">
+  <link rel="icon" href="/assets/avatar.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:ital,opsz,wght@0,9..144,600..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Bodoni+Moda:opsz,wght@6..96,400..900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/admin.css">
 </head>
 <body>
@@ -16,8 +16,9 @@
   <!-- Login -->
   <section id="login" class="login" hidden>
     <form class="card login__card" id="loginForm">
-      <img src="/assets/logo.png" alt="" width="84" height="84">
+      <img src="/assets/avatar.png" alt="" width="84" height="84">
       <h1>Panel del café</h1>
+      <p class="error" id="loginClosed" hidden>El panel está cerrado: falta definir <code>ADMIN_PASSWORD</code> en Vercel.</p>
       <label>Contraseña
         <input type="password" id="password" autocomplete="current-password" required autofocus>
       </label>
@@ -29,9 +30,9 @@
   <!-- App -->
   <div id="app" hidden>
     <header class="top">
-      <div class="top__brand"><img src="/assets/logo.png" alt="" width="34" height="34"> Panel · <span id="siteName">El Discreto Encanto</span></div>
+      <div class="top__brand"><img src="/assets/avatar.png" alt="" width="34" height="34"> Panel · <span id="siteName">El Discreto Encanto</span></div>
       <nav class="tabs" id="tabs">
-        <button data-tab="menu" class="is-active">Menú</button>
+        <button data-tab="menu" class="is-active">Carta</button>
         <button data-tab="events">Eventos</button>
         <button data-tab="settings">Ajustes</button>
       </nav>
@@ -41,27 +42,32 @@
       </div>
     </header>
 
-    <div class="banner" id="pwBanner" hidden>
+    <div class="banner banner--warn" id="pwBanner" hidden>
       ⚠️ Estás usando la contraseña por defecto. Definí <code>ADMIN_PASSWORD</code> en el servidor antes de publicar.
+    </div>
+    <div class="banner banner--err" id="persistBanner" hidden>
+      ⚠️ Los cambios <b>no se van a guardar</b>: falta conectar Supabase en Vercel. Pasos en el <code>README</code> (variables <code>SUPABASE_URL</code> y <code>SUPABASE_SERVICE_ROLE_KEY</code>).
     </div>
 
     <main class="wrap">
-      <!-- MENÚ -->
+      <!-- CARTA -->
       <section id="tab-menu">
         <div class="bar">
-          <h2>Menú y precios</h2>
+          <h2>Carta y precios</h2>
           <form class="inline" id="catForm">
-            <input id="catName" placeholder="Nueva categoría (ej. Brunch)" maxlength="60" required>
-            <button class="btn btn--small" type="submit">Agregar categoría</button>
+            <input id="catName" placeholder="Nueva sección (ej. Brunch)" maxlength="60" required>
+            <input id="catGroup" list="groups" placeholder="Grupo (ej. Para comer)" maxlength="40">
+            <datalist id="groups"></datalist>
+            <button class="btn btn--small" type="submit">Agregar sección</button>
           </form>
         </div>
-        <p class="hint">Los cambios se guardan solos al salir de cada campo. El sitio se actualiza al instante.</p>
+        <p class="hint">Los cambios se guardan solos al salir de cada campo y el sitio se actualiza al instante. Los precios van sin puntos (2700). Para bebidas con dos precios (caliente / frío) completá "Precio 2".</p>
         <div id="menuAdmin"></div>
       </section>
 
       <!-- EVENTOS -->
       <section id="tab-events" hidden>
-        <div class="bar"><h2>Eventos</h2></div>
+        <div class="bar"><h2>Eventos · Secretos fuera de carta</h2></div>
         <form class="card evform" id="eventForm">
           <h3>Nuevo evento</h3>
           <div class="grid">
@@ -83,10 +89,10 @@
             <label>Nombre <input name="name" maxlength="80"></label>
             <label>Frase de portada <input name="tagline" maxlength="160"></label>
             <label>WhatsApp (con código de país, solo números) <input name="whatsapp" placeholder="5491178237284"></label>
-            <label>Teléfono para mostrar <input name="phoneDisplay" placeholder="11 7823-7284"></label>
+            <label>Teléfono para mostrar <input name="phoneDisplay" placeholder="11-7823-7284"></label>
             <label>Instagram (sin @) <input name="instagram"></label>
-            <label>Dirección <input name="address" maxlength="160" placeholder="Calle 123, Barrio"></label>
-            <label>Horarios <input name="hours" maxlength="200" placeholder="Lun a Dom · 8 a 20 hs"></label>
+            <label>Dirección <input name="address" maxlength="160" placeholder="Av. Piedrabuena 4978, CABA"></label>
+            <label>Horarios (si lo dejás vacío no se muestra) <input name="hours" maxlength="200" placeholder="Lun a Dom · 8 a 20 hs"></label>
             <label>Link de Google Maps <input name="mapsUrl" maxlength="500"></label>
           </div>
           <button class="btn" type="submit">Guardar ajustes</button>

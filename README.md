@@ -1,58 +1,44 @@
-# El Discreto Encanto — sitio + panel
+# El Discreto Encanto
 
-Sitio de la cafetería con menú que se edita solo, calendario de eventos y generador de historias de Instagram.
-Stack: Node + Express, front en HTML/CSS/JS puro. Los datos viven en `data/db.json` (se crea solo la primera vez).
+Sitio de la cafetería (Av. Piedrabuena 4978, CABA): carta con precios, calendario de eventos y panel de administración con publicación de historias en Instagram.
 
-## Correrlo
+Stack: Node 22 + Express (API) y front en HTML/CSS/JS plano. Pensado para **Vercel + Supabase**.
+
+## Correr local
 
 ```bash
 npm install
-ADMIN_PASSWORD=tu-clave npm start
+ADMIN_PASSWORD=tuclave npm start   # http://localhost:3000  ·  panel en /admin
 ```
 
-- Sitio: http://localhost:3000
-- Panel: http://localhost:3000/admin
+Sin Supabase guarda en `data/db.json`.
 
-## Qué se edita desde el panel (/admin)
+## Publicar en Vercel
 
-- **Menú**: precios, nombres, descripciones, agregar/sacar productos y categorías, marcar "Disponible / Agotado".
-- **Eventos**: crear, editar, borrar. Aparecen solos en el calendario del sitio.
-- **Historia de Instagram**: botón "📸 Historia" en cada evento → genera la imagen 1080×1920 → "Descargar" o "Publicar en Instagram".
-- **Ajustes**: nombre, WhatsApp, dirección, horarios, link de Maps, Instagram.
+1. Importá el repo en Vercel (framework: Other). `vercel.json` ya está listo.
+2. Creá un proyecto en [Supabase](https://supabase.com) y ejecutá `docs/supabase.sql` en el SQL Editor (crea la tabla `site_data` y el bucket público `stories`).
+3. En Vercel → Settings → Environment Variables:
 
-> El menú inicial es **de ejemplo**. Reemplazalo con los productos y precios reales desde el panel.
+| Variable | Para qué |
+|---|---|
+| `ADMIN_PASSWORD` | Clave del panel. Sin ella el panel queda cerrado. |
+| `SUPABASE_URL` | URL del proyecto Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clave secreta (service role). Nunca en el front. |
+| `SESSION_SECRET` | Opcional, string largo al azar |
+| `IG_USER_ID`, `IG_ACCESS_TOKEN` | Opcionales, para historias automáticas |
 
-## Publicar historias automáticamente en Instagram
+4. Redeploy. En `/admin` desaparecen los avisos rojos cuando todo está conectado.
 
-Sin configurar nada, el botón "Descargar imagen" siempre funciona (la subís a mano como historia).
-Para que el botón "Publicar en Instagram" funcione hace falta:
+## Panel (`/admin`)
 
-1. Que la cuenta sea **profesional** (Business o Creator) y esté vinculada a una Página de Facebook.
-2. Una app en Meta for Developers con el permiso `instagram_content_publish` (en modo desarrollo funciona con tu propia cuenta; para otras cuentas requiere revisión de Meta).
-3. Un token de acceso de larga duración y el `IG_USER_ID` de la cuenta.
-4. El sitio publicado en una URL **https** pública (`PUBLIC_URL`), porque Instagram descarga la imagen desde ahí. En `localhost` no funciona.
+- **Carta**: editar precios (caliente/frío), descripciones, disponibilidad; agregar y borrar productos y secciones.
+- **Eventos**: crear eventos (aparecen en el calendario del sitio) y generar la historia 1080×1920 con la marca.
+- **Ajustes**: teléfono, WhatsApp, dirección, horarios, Maps.
 
-Cargá `IG_USER_ID`, `IG_ACCESS_TOKEN` y `PUBLIC_URL` como variables de entorno (ver `.env.example`).
-Los tokens de larga duración vencen (~60 días): hay que renovarlos.
+## Instagram
 
-## Seguridad básica ya incluida
+Requiere cuenta Business/Creator vinculada a una página de Facebook y una app de Meta con el permiso `instagram_content_publish`. Con un token de larga duración y el ID de la cuenta, el botón "Publicar en Instagram" sube la historia. La imagen se hospeda en el bucket `stories` de Supabase. Si no está configurado, la historia se descarga como PNG para subirla a mano.
 
-- Login con cookie firmada (HttpOnly, SameSite=Strict, `Secure` bajo https) y bloqueo de 5 min tras 5 intentos fallidos.
-- Todo el contenido que se muestra en el sitio se escapa (sin HTML inyectado).
-- Si usás la contraseña por defecto, el panel muestra un aviso y el servidor lo advierte en consola.
+## Marca
 
-## Estructura
-
-```
-server.js        API + login + publicación en Instagram
-seed.js          menú y ajustes iniciales (de ejemplo)
-data/db.json     datos (se genera solo)
-public/          sitio (index.html), panel (admin.html), css, js, assets
-public/stories/  imágenes de historias generadas
-```
-
-## Próximos pasos sugeridos
-
-- Tipografía y logos definitivos (hoy: Fraunces + DM Sans, y el logo del detective).
-- Fotos reales por producto y galería.
-- Deploy en Render/Railway/Fly (necesita disco persistente para `data/` o pasar los datos a una base como Supabase).
+Colores Terracota/Brasas, Archivo + Bodoni Moda + DM Mono (sustitutas de las tipografías del manual). Las marcas son PNG con alfa recoloreados por CSS en `public/assets`.

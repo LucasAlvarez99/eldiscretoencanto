@@ -13,7 +13,7 @@
   function toast(msg, isError = false) {
     const t = $('#toast');
     t.textContent = msg; t.hidden = false; t.classList.toggle('is-error', isError);
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2200);
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, isError ? 4200 : 2200);
   }
   async function api(path, method = 'GET', body) {
     const r = await fetch('/api' + path, {
@@ -29,10 +29,14 @@
   const guard = (fn) => async (...a) => { try { await fn(...a); } catch (e) { toast(e.message, true); } };
 
   // ---------- Login ----------
-  function showLogin() { $('#app').hidden = true; $('#login').hidden = false; }
-  async function showApp(defaultPassword) {
+  function showLogin(closed) {
+    $('#app').hidden = true; $('#login').hidden = false;
+    $('#loginClosed').hidden = !closed;
+  }
+  async function showApp(me) {
     $('#login').hidden = true; $('#app').hidden = false;
-    $('#pwBanner').hidden = !defaultPassword;
+    $('#pwBanner').hidden = !me.defaultPassword;
+    $('#persistBanner').hidden = !!me.persistent;
     await reload();
     ig = await api('/admin/instagram-status').catch(() => ig);
     renderSettings();
@@ -43,15 +47,14 @@
     try {
       await api('/login', 'POST', { password: $('#password').value });
       $('#password').value = '';
-      const me = await api('/me');
-      await showApp(me.defaultPassword);
+      await showApp(await api('/me'));
     } catch (err) { $('#loginError').textContent = err.message; }
   });
   $('#logout').onclick = async () => { await api('/logout', 'POST').catch(() => {}); showLogin(); };
 
   (async () => {
     const me = await api('/me').catch(() => ({ admin: false }));
-    if (me.admin) showApp(me.defaultPassword); else showLogin();
+    if (me.admin) showApp(me); else showLogin(me.loginDisabled);
   })();
 
   async function reload() {
@@ -68,32 +71,48 @@
     ['menu', 'events', 'settings'].forEach((t) => { $('#tab-' + t).hidden = t !== b.dataset.tab; });
   };
 
-  // ---------- Menú ----------
+  // ---------- Carta ----------
   function renderMenu() {
     const cats = [...db.categories].sort((a, b) => a.order - b.order);
+    $('#groups').innerHTML = [...new Set(cats.map((c) => c.group).filter(Boolean))].map((g) => `<option value="${esc(g)}">`).join('');
     $('#menuAdmin').innerHTML = cats.map((c) => {
       const items = db.items.filter((i) => i.categoryId === c.id);
+      const alt = !!c.altLabel;
       return `<div class="card cat" data-cat="${c.id}">
         <div class="cat__head">
-          <input data-field="catname" value="${esc(c.name)}" maxlength="60" aria-label="Nombre de la categoría">
-          <button class="link" data-act="delcat">Borrar categoría</button>
+          <span class="cat__group">${esc(c.group || '')}</span>
+          <input data-catfield="name" value="${esc(c.name)}" maxlength="60" aria-label="Nombre de la sección">
+          <button class="link" data-act="delcat">Borrar sección</button>
         </div>
-        ${items.map(rowHtml).join('')}
-        <form class="row row--new" data-newitem="${c.id}">
+        <details class="cat__opts">
+          <summary>Opciones de la sección (grupo, columnas caliente/frío, aclaración)</summary>
+          <div class="grid">
+            <label>Grupo (BEBIDAS, PARA COMER…) <input data-catfield="group" value="${esc(c.group)}" maxlength="40"></label>
+            <label>Columna 1 (ej. Caliente) <input data-catfield="mainLabel" value="${esc(c.mainLabel)}" maxlength="20"></label>
+            <label>Columna 2 (ej. Frío) — vacío = un solo precio <input data-catfield="altLabel" value="${esc(c.altLabel)}" maxlength="20"></label>
+          </div>
+          <label>Aclaración al pie de la sección (una línea por renglón)
+            <textarea data-catfield="note" rows="3" maxlength="400">${esc(c.note)}</textarea></label>
+          <p></p>
+        </details>
+        ${items.map((i) => rowHtml(i, alt, c.altLabel)).join('')}
+        <form class="row row--new${alt ? ' has-alt' : ''}" data-newitem="${c.id}">
           <input name="name" placeholder="Nuevo producto" maxlength="80" required>
           <input name="description" class="desc" placeholder="Descripción (opcional)" maxlength="200">
-          <input name="price" type="number" min="0" step="1" placeholder="Precio" required>
+          <input name="price" type="number" min="0" step="1" placeholder="${alt ? esc(c.mainLabel || 'Precio') : 'Precio'}" required>
+          ${alt ? `<input name="priceAlt" type="number" min="0" step="1" placeholder="${esc(c.altLabel)}">` : ''}
           <span></span>
           <button class="btn btn--small" type="submit">Agregar</button>
         </form>
       </div>`;
-    }).join('') || '<p class="hint">Todavía no hay categorías. Creá la primera arriba.</p>';
+    }).join('') || '<p class="hint">Todavía no hay secciones. Creá la primera arriba.</p>';
   }
-  function rowHtml(i) {
-    return `<div class="row${i.available ? '' : ' is-off'}" data-item="${i.id}">
+  function rowHtml(i, alt, altLabel) {
+    return `<div class="row${alt ? ' has-alt' : ''}${i.available ? '' : ' is-off'}" data-item="${i.id}">
       <input data-field="name" value="${esc(i.name)}" maxlength="80" aria-label="Nombre">
       <input data-field="description" class="desc" value="${esc(i.description)}" maxlength="200" placeholder="Descripción" aria-label="Descripción">
       <input data-field="price" type="number" min="0" step="1" value="${i.price}" aria-label="Precio">
+      ${alt ? `<input data-field="priceAlt" type="number" min="0" step="1" value="${i.priceAlt ?? ''}" placeholder="${esc(altLabel)}" aria-label="Precio ${esc(altLabel)}">` : ''}
       <label class="sw"><input type="checkbox" data-field="available" ${i.available ? 'checked' : ''}> Disponible</label>
       <button class="del" data-act="delitem" title="Borrar producto" aria-label="Borrar producto">🗑</button>
     </div>`;
@@ -101,27 +120,30 @@
 
   $('#catForm').addEventListener('submit', guard(async (e) => {
     e.preventDefault();
-    await api('/admin/categories', 'POST', { name: $('#catName').value });
+    await api('/admin/categories', 'POST', { name: $('#catName').value, group: $('#catGroup').value });
     $('#catName').value = '';
-    await reload(); toast('Categoría creada');
+    await reload(); toast('Sección creada');
   }));
 
   $('#menuAdmin').addEventListener('change', guard(async (e) => {
-    const f = e.target.dataset.field; if (!f) return;
-    const row = e.target.closest('[data-item]');
-    if (row) {
-      const val = f === 'available' ? e.target.checked : e.target.value;
-      await api('/admin/items/' + row.dataset.item, 'PUT', { [f]: val });
+    const t = e.target;
+    const row = t.closest('[data-item]');
+    if (row && t.dataset.field) {
+      const f = t.dataset.field;
+      const val = f === 'available' ? t.checked : t.value;
+      const saved = await api('/admin/items/' + row.dataset.item, 'PUT', { [f]: val });
       const it = db.items.find((i) => i.id === row.dataset.item);
-      if (it) it[f === 'price' ? 'price' : f] = f === 'price' ? Number(val) : val;
+      if (it) Object.assign(it, saved);
       if (f === 'available') row.classList.toggle('is-off', !val);
       toast('Guardado ✓');
       return;
     }
-    const cat = e.target.closest('[data-cat]');
-    if (cat && f === 'catname') {
-      await api('/admin/categories/' + cat.dataset.cat, 'PUT', { name: e.target.value });
+    const cat = t.closest('[data-cat]');
+    if (cat && t.dataset.catfield) {
+      const f = t.dataset.catfield;
+      await api('/admin/categories/' + cat.dataset.cat, 'PUT', { [f]: t.value });
       toast('Guardado ✓');
+      if (f !== 'name' && f !== 'note') { const open = cat.dataset.cat; await reload(); const d = document.querySelector(`[data-cat="${open}"] details`); if (d) d.open = true; }
     }
   }));
 
@@ -130,16 +152,16 @@
     if (act === 'delitem') {
       const row = e.target.closest('[data-item]');
       const it = db.items.find((i) => i.id === row.dataset.item);
-      if (!confirm(`¿Borrar "${it?.name}" del menú?`)) return;
+      if (!confirm(`¿Borrar "${it?.name}" de la carta?`)) return;
       await api('/admin/items/' + row.dataset.item, 'DELETE');
       await reload(); toast('Producto borrado');
     }
     if (act === 'delcat') {
       const cat = e.target.closest('[data-cat]');
       const c = db.categories.find((x) => x.id === cat.dataset.cat);
-      if (!confirm(`¿Borrar la categoría "${c?.name}" y todos sus productos?`)) return;
+      if (!confirm(`¿Borrar la sección "${c?.name}" y todos sus productos?`)) return;
       await api('/admin/categories/' + cat.dataset.cat, 'DELETE');
-      await reload(); toast('Categoría borrada');
+      await reload(); toast('Sección borrada');
     }
   }));
 
@@ -148,7 +170,8 @@
     e.preventDefault();
     const fd = new FormData(form);
     await api('/admin/items', 'POST', {
-      categoryId: form.dataset.newitem, name: fd.get('name'), description: fd.get('description'), price: fd.get('price'),
+      categoryId: form.dataset.newitem, name: fd.get('name'), description: fd.get('description'),
+      price: fd.get('price'), priceAlt: fd.get('priceAlt'),
     });
     await reload(); toast('Producto agregado');
   }));
@@ -161,7 +184,7 @@
       title: $('#evTitle').value, date: $('#evDate').value, time: $('#evTime').value, description: $('#evDesc').value,
     });
     $('#evTitle').value = ''; $('#evTime').value = ''; $('#evDesc').value = '';
-    await reload(); toast('Evento creado. Ahora podés publicar la historia.');
+    await reload(); toast('Evento creado. Ahora podés armar la historia.');
     openStory(ev.id);
   }));
 
@@ -213,11 +236,24 @@
     toast('Ajustes guardados ✓');
   }));
 
-  // ---------- Historia de Instagram ----------
+  // ---------- Historia de Instagram (1080×1920, identidad "Brasas") ----------
   let currentEvent = null;
-  const logoImg = new Image(); logoImg.src = '/assets/logo.png';
+  const loadImg = (src) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
 
-  function wrap(ctx, text, maxW) {
+  // Dibuja una marca (PNG con alfa) teñida del color pedido, ajustada a una caja.
+  function drawMark(ctx, img, color, x, y, maxW, maxH, align = 'center') {
+    if (!img) return { w: 0, h: 0 };
+    const s = Math.min(maxW / img.width, maxH / img.height);
+    const w = img.width * s, h = img.height * s;
+    const tmp = document.createElement('canvas'); tmp.width = Math.ceil(w); tmp.height = Math.ceil(h);
+    const t = tmp.getContext('2d');
+    t.drawImage(img, 0, 0, w, h);
+    t.globalCompositeOperation = 'source-in'; t.fillStyle = color; t.fillRect(0, 0, w, h);
+    const dx = align === 'center' ? x - w / 2 : x;
+    ctx.drawImage(tmp, dx, y);
+    return { w, h };
+  }
+  function wrapText(ctx, text, maxW) {
     const words = String(text).split(/\s+/); const lines = []; let line = '';
     for (const w of words) {
       const test = line ? line + ' ' + w : w;
@@ -228,46 +264,55 @@
   }
 
   async function drawStory(ev) {
-    try { await document.fonts.load('900 100px Fraunces'); await document.fonts.load('500 40px "DM Sans"'); } catch {}
-    if (!logoImg.complete) await new Promise((r) => { logoImg.onload = r; logoImg.onerror = r; });
+    try {
+      await Promise.all([
+        document.fonts.load('700 100px "Bodoni Moda"'), document.fonts.load('600 30px "Archivo"'), document.fonts.load('500 30px "DM Mono"'),
+      ]);
+    } catch {}
+    const [word, head] = await Promise.all([loadImg('/assets/wordmark-v.png'), loadImg('/assets/detective-head.png')]);
     const c = $('#storyCanvas'); const ctx = c.getContext('2d'); const W = 1080, H = 1920;
-    const RUST = '#a2412d', CREAM = '#f1e6d2', INK = '#12161b';
+    const CARBON = '#0F0B09', BRASAS = '#A04818', TERRACOTA = '#D07040', CREMA = '#E8D8C0', VINO = '#890E0E';
 
-    ctx.fillStyle = INK; ctx.fillRect(0, 0, W, H);
-    // franja diagonal
-    ctx.fillStyle = RUST; ctx.beginPath(); ctx.moveTo(0, 1180); ctx.lineTo(W, 980); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = CARBON; ctx.fillRect(0, 0, W, H);
+    // franja de brasas abajo
+    ctx.fillStyle = VINO; ctx.beginPath(); ctx.moveTo(0, 1240); ctx.lineTo(W, 1090); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+    // marco fino
+    ctx.strokeStyle = 'rgba(232,216,192,.35)'; ctx.lineWidth = 3; ctx.strokeRect(48, 48, W - 96, H - 96);
 
-    // logo
-    ctx.save(); ctx.beginPath(); ctx.arc(W / 2, 330, 170, 0, Math.PI * 2); ctx.clip();
-    ctx.drawImage(logoImg, W / 2 - 170, 160, 340, 340); ctx.restore();
-    ctx.strokeStyle = CREAM; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(W / 2, 330, 173, 0, Math.PI * 2); ctx.stroke();
-
+    drawMark(ctx, word, TERRACOTA, W / 2, 120, 640, 280);
     ctx.textAlign = 'center';
-    ctx.fillStyle = RUST; ctx.font = '700 44px "DM Sans", sans-serif';
-    ctx.fillText('E V E N T O', W / 2, 640);
+    ctx.fillStyle = CREMA; ctx.font = '600 34px Archivo, sans-serif';
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '12px';
+    ctx.fillText('ESTO NO ES UNA CARTA', W / 2 + 6, 470);
+    ctx.fillStyle = TERRACOTA; ctx.font = '500 38px "DM Mono", monospace';
+    ctx.fillText('SECRETOS FUERA DE CARTA', W / 2 + 6, 640);
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
 
     // título
-    ctx.fillStyle = CREAM; let size = 120; let lines;
-    do { ctx.font = `900 ${size}px Fraunces, Georgia, serif`; lines = wrap(ctx, ev.title.toUpperCase(), W - 160); size -= 6; } while (lines.length > 4 && size > 60);
-    const lh = size * 1.08 + 6; let y = 760;
+    ctx.fillStyle = CREMA; let size = 132; let lines;
+    do { ctx.font = `700 ${size}px "Bodoni Moda", Georgia, serif`; lines = wrapText(ctx, ev.title.toUpperCase(), W - 190); size -= 6; } while (lines.length > 4 && size > 64);
+    const lh = size * 1.08; let y = 780;
     lines.forEach((l) => { ctx.fillText(l, W / 2, y); y += lh; });
 
-    // fecha y hora
+    // fecha y hora sobre la franja
     const d = new Date(ev.date + 'T00:00:00');
     const dateTxt = d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
-    y = Math.max(y + 30, 1120);
-    ctx.fillStyle = INK; ctx.font = '900 64px Fraunces, Georgia, serif';
-    ctx.fillText(dateTxt, W / 2, y + 120);
-    if (ev.time) { ctx.font = '700 56px "DM Sans", sans-serif'; ctx.fillText(`${ev.time} HS`, W / 2, y + 200); }
-
-    // descripción
+    y = Math.max(y + 40, 1240);
+    ctx.fillStyle = CREMA; ctx.font = '700 70px "Bodoni Moda", Georgia, serif';
+    ctx.fillText(dateTxt, W / 2, y + 90);
+    if (ev.time) { ctx.font = '500 52px "DM Mono", monospace'; ctx.fillText(`${ev.time} HS`, W / 2, y + 170); }
     if (ev.description) {
-      ctx.fillStyle = CREAM; ctx.font = '500 42px "DM Sans", sans-serif';
-      wrap(ctx, ev.description, W - 220).slice(0, 4).forEach((l, i) => ctx.fillText(l, W / 2, y + 320 + i * 58));
+      ctx.font = '500 40px Archivo, sans-serif';
+      wrapText(ctx, ev.description, W - 240).slice(0, 3).forEach((l, i) => ctx.fillText(l, W / 2, y + 260 + i * 56));
     }
 
-    ctx.fillStyle = CREAM; ctx.font = '700 46px "DM Sans", sans-serif';
-    ctx.fillText(`@${db.settings.instagram}`, W / 2, 1830);
+    // pie
+    drawMark(ctx, head, CREMA, W / 2, H - 330, 120, 120);
+    ctx.fillStyle = CREMA; ctx.font = '500 34px "DM Mono", monospace';
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '6px';
+    ctx.fillText(`@${db.settings.instagram}`.toUpperCase(), W / 2, H - 170);
+    if (db.settings.address) { ctx.font = '500 28px "DM Mono", monospace'; ctx.fillText(db.settings.address.toUpperCase(), W / 2, H - 118); }
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
   }
 
   async function openStory(id) {
@@ -291,10 +336,9 @@
   $('#storyPublish').onclick = guard(async () => {
     const btn = $('#storyPublish'); btn.disabled = true; btn.textContent = 'Publicando…'; $('#storyMsg').textContent = '';
     try {
-      const r = await api(`/admin/events/${currentEvent.id}/story`, 'POST', { image: $('#storyCanvas').toDataURL('image/png'), publish: true });
+      await api(`/admin/events/${currentEvent.id}/story`, 'POST', { image: $('#storyCanvas').toDataURL('image/png'), publish: true });
       $('#storyMsg').textContent = '✅ Historia publicada en Instagram.';
       toast('Historia publicada ✓');
-      return r;
     } catch (e) {
       $('#storyMsg').textContent = '❌ ' + e.message;
       throw e;

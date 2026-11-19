@@ -2,106 +2,79 @@
 (() => {
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const money = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
+  const fmt = (n) => String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); // 2700 → 2.700
   const pad = (n) => String(n).padStart(2, '0');
   const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   const parse = (s) => new Date(s + 'T00:00:00');
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
   let data = { settings: {}, categories: [], items: [], events: [] };
-  let cart = {}; // itemId -> qty
-  try { cart = JSON.parse(localStorage.getItem('de_cart') || '{}'); } catch { cart = {}; }
-  const saveCart = () => { try { localStorage.setItem('de_cart', JSON.stringify(cart)); } catch {} };
 
-  // ---------- Carga ----------
   fetch('/api/public')
-    .then((r) => r.json())
+    .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then((d) => { data = d; init(); })
-    .catch(() => { $('#menuList').innerHTML = '<p class="empty empty--light">No pudimos cargar el menú. Probá recargar.</p>'; });
+    .catch(() => { $('#carta-list').innerHTML = '<p class="empty" style="color:#6b5648">No pudimos cargar la carta. Probá recargar.</p>'; });
 
   function init() {
     const s = data.settings;
-    const waBase = `https://wa.me/${s.whatsapp}`;
-    document.title = `${s.name} · Café de especialidad`;
-    $('#brandName').textContent = s.name;
-    $('#footName').textContent = s.name;
-    $('#footPhone').textContent = s.phoneDisplay || '';
-    $('#tagline').textContent = s.tagline || '';
-    const wa = `${waBase}?text=${encodeURIComponent('¡Hola! Quiero hacer una consulta.')}`;
-    ['#navWa', '#heroWa', '#waBtn'].forEach((id) => { $(id).href = wa; });
+    document.title = `${s.name} · Café en Villa Lugano`;
+    if (s.tagline) $('#tagline').textContent = s.tagline;
+
+    const maps = s.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address || '')}`;
+    ['#navMaps', '#heroMaps', '#mapsBtn'].forEach((id) => { $(id).href = maps; });
+    $('#waBtn').href = `https://wa.me/${s.whatsapp}?text=${encodeURIComponent('¡Hola! Quería hacer una consulta.')}`;
     $('#igBtn').href = `https://instagram.com/${s.instagram}`;
-    $('#mapsBtn').href = s.mapsUrl || '#';
-    $('#address').textContent = s.address ? `📍 ${s.address}` : '📍 Mirá cómo llegar en el mapa';
-    $('#hours').textContent = s.hours ? `🕘 ${s.hours}` : '🕘 Consultá los horarios por WhatsApp';
+    $('#footIg').href = `https://instagram.com/${s.instagram}`;
+    $('#footIg').textContent = `@${s.instagram}`;
+    $('#footPhone').textContent = s.phoneDisplay || '';
+    ['#heroAddr', '#address', '#footAddr'].forEach((id) => { $(id).textContent = s.address || ''; });
+    if (s.hours) { $('#hours').textContent = s.hours; $('#hours').hidden = false; }
 
     renderTicker();
-    renderMenu();
+    renderCarta();
     renderCalendar();
-    updateCart();
   }
 
   function renderTicker() {
-    const words = ['Café de especialidad', 'Pedí por WhatsApp', 'Eventos en el café', `@${data.settings.instagram}`, 'Entrá sin hacer ruido'];
+    const words = ['Café molido en el momento', 'Pedí en el mostrador', 'Disfrutá en las mesas', 'Secretos fuera de carta los fines de semana', `@${data.settings.instagram}`];
     const one = words.map((w) => `<span>${esc(w)}</span><span>✦</span>`).join('');
-    $('#ticker').innerHTML = one + one + one + one; // se repite para el loop continuo
+    $('#ticker').innerHTML = one + one + one + one;
   }
 
-  // ---------- Menú ----------
-  function renderMenu() {
-    const cats = data.categories.filter((c) => data.items.some((i) => i.categoryId === c.id));
-    $('#pills').innerHTML = cats.map((c, i) => `<button class="pill${i === 0 ? ' is-active' : ''}" data-cat="${c.id}">${esc(c.name)}</button>`).join('');
-    $('#menuList').innerHTML = cats.map((c) => {
-      const rows = data.items.filter((i) => i.categoryId === c.id).map((i) => `
-        <div class="item${i.available ? '' : ' item--off'}">
-          <div>
-            <div class="item__name">${esc(i.name)} ${i.tag ? `<span class="tag">${esc(i.tag)}</span>` : ''} ${i.available ? '' : '<span class="soldout">Agotado</span>'}</div>
-            ${i.description ? `<p class="item__desc">${esc(i.description)}</p>` : ''}
-          </div>
-          <div class="item__price">${money(i.price)}</div>
-          <button class="add" data-add="${i.id}" aria-label="Agregar ${esc(i.name)}">+</button>
-        </div>`).join('');
-      return `<div class="menu__cat" id="cat-${c.id}"><h3>${esc(c.name)}</h3>${rows}</div>`;
+  // ---------- Carta ----------
+  function renderCarta() {
+    const cats = [...data.categories].sort((a, b) => a.order - b.order);
+    const groups = [];
+    cats.forEach((c) => {
+      const items = data.items.filter((i) => i.categoryId === c.id);
+      if (!items.length) return;
+      const name = c.group || 'Carta';
+      let g = groups.find((x) => x.name === name);
+      if (!g) { g = { name, cats: [] }; groups.push(g); }
+      g.cats.push({ c, items });
+    });
+
+    $('#carta-list').innerHTML = groups.map((g) => `
+      <section class="group" aria-label="${esc(g.name)}">
+        <h3 class="group__title">${esc(g.name)}</h3>
+        <div class="group__body">${g.cats.map(({ c, items }) => subHtml(c, items)).join('')}</div>
+      </section>`).join('') || '<p class="empty" style="color:#6b5648">Todavía no hay productos cargados.</p>';
+  }
+
+  function subHtml(c, items) {
+    const two = !!c.altLabel;
+    const head = `<div class="sub__head"><span>${esc(c.name)}</span>${two ? `<span class="col">${esc(c.mainLabel || '')}</span><span class="col">${esc(c.altLabel)}</span>` : '<span></span>'}</div>`;
+    const rows = items.map((i) => {
+      const off = i.available === false;
+      const prices = off
+        ? '<span class="price price--off">Agotado</span>'
+        : `<span class="price">${fmt(i.price)}</span>${two ? `<span class="price">${i.priceAlt == null ? '' : fmt(i.priceAlt)}</span>` : ''}`;
+      return `<div class="row${off ? ' row--off' : ''}">
+        <div class="row__name">${esc(i.name)}${i.description ? `<small>${esc(i.description)}</small>` : ''}</div>${prices}</div>`;
     }).join('');
-
-    $('#pills').onclick = (e) => {
-      const b = e.target.closest('.pill'); if (!b) return;
-      document.querySelectorAll('.pill').forEach((p) => p.classList.toggle('is-active', p === b));
-      const el = document.getElementById('cat-' + b.dataset.cat);
-      if (el) window.scrollTo({ top: el.getBoundingClientRect().top + scrollY - 130, behavior: 'smooth' });
-    };
-    $('#menuList').onclick = (e) => {
-      const b = e.target.closest('[data-add]'); if (!b) return;
-      cart[b.dataset.add] = (cart[b.dataset.add] || 0) + 1;
-      saveCart(); updateCart();
-    };
+    const note = c.note ? `<p class="note">${String(c.note).split('\n').map((l) => `<span>${esc(l)}</span>`).join('')}</p>` : '';
+    return `<div class="sub sub--${two ? 2 : 1}">${head}${rows}${note}</div>`;
   }
-
-  // ---------- Pedido ----------
-  function cartLines() {
-    return Object.entries(cart)
-      .map(([id, qty]) => ({ item: data.items.find((i) => i.id === id && i.available), qty }))
-      .filter((l) => l.item && l.qty > 0);
-  }
-  function updateCart() {
-    const lines = cartLines();
-    const count = lines.reduce((a, l) => a + l.qty, 0);
-    const total = lines.reduce((a, l) => a + l.qty * l.item.price, 0);
-    $('#cart').hidden = count === 0;
-    $('#cartCount').textContent = count;
-    $('#cartTotal').textContent = money(total);
-  }
-  $('#cartClear').onclick = () => { cart = {}; saveCart(); updateCart(); };
-  $('#cartSend').onclick = () => {
-    const lines = cartLines();
-    if (!lines.length) return;
-    const total = lines.reduce((a, l) => a + l.qty * l.item.price, 0);
-    const text = [
-      `¡Hola ${data.settings.name}! Quiero pedir:`,
-      ...lines.map((l) => `• ${l.qty}x ${l.item.name} (${money(l.item.price * l.qty)})`),
-      `Total: ${money(total)}`,
-    ].join('\n');
-    window.open(`https://wa.me/${data.settings.whatsapp}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
-  };
 
   // ---------- Calendario ----------
   const today = new Date();
@@ -112,7 +85,7 @@
     const byDate = {};
     data.events.forEach((e) => { (byDate[e.date] ||= []).push(e); });
     const first = new Date(view.getFullYear(), view.getMonth(), 1);
-    const offset = (first.getDay() + 6) % 7; // semana desde lunes
+    const offset = (first.getDay() + 6) % 7; // semana desde el lunes
     const days = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
     const title = cap(view.toLocaleDateString('es-AR', { month: 'long' })) + ' ' + view.getFullYear();
 
@@ -145,7 +118,7 @@
     let list; let title;
     if (selected) {
       list = data.events.filter((e) => e.date === selected);
-      title = parse(selected).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+      title = cap(parse(selected).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }));
     } else {
       list = data.events.filter((e) => e.date >= ymd(today));
       title = 'Próximos eventos';
@@ -155,7 +128,7 @@
       ? list.map((e) => {
           const d = parse(e.date);
           return `<article class="ev">
-            <div class="ev__date"><span class="ev__day">${d.getDate()}</span><span class="ev__mon">${d.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '')}</span></div>
+            <div class="ev__date"><span class="ev__day">${d.getDate()}</span><span class="ev__mon">${esc(d.toLocaleDateString('es-AR', { month: 'short' }).replace('.', ''))}</span></div>
             <div>
               <h4>${esc(e.title)}</h4>
               <div class="ev__meta">${esc(cap(d.toLocaleDateString('es-AR', { weekday: 'long' })))}${e.time ? ` · ${esc(e.time)} hs` : ''}</div>

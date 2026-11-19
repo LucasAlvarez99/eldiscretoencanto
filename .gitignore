@@ -1,5 +1,7 @@
-node_modules/
+node_modules
 .env
+.vercel
 data/db.json
-data/db.json.tmp
-public/stories/*.png
+public/stories/*
+!public/stories/.gitkeep
+*.log
