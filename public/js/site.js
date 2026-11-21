@@ -28,7 +28,8 @@
     $('#footIg').textContent = `@${s.instagram}`;
     $('#footPhone').textContent = s.phoneDisplay || '';
     ['#heroAddr', '#address', '#footAddr'].forEach((id) => { $(id).textContent = s.address || ''; });
-    if (s.hours) { $('#hours').textContent = s.hours; $('#hours').hidden = false; }
+    const hrs = [s.hours, s.hoursWeekend].filter(Boolean);
+    if (hrs.length) { $('#hours').innerHTML = hrs.map((h) => `<span>${esc(h)}</span>`).join(''); $('#hours').hidden = false; }
 
     renderTicker();
     renderCarta();
@@ -114,6 +115,17 @@
     renderEvents();
   }
 
+  function seatsHtml(e) {
+    if (e.capacity == null) return '';
+    const left = Math.max(0, e.capacity - (e.reserved || 0));
+    if (left === 0) return '<p class="ev__seats ev__seats--out">Entradas agotadas</p>';
+    const d = parse(e.date).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+    const msg = `¡Hola! Quiero reservar para "${e.title}" (${d}${e.time ? ' ' + e.time + ' hs' : ''}).`;
+    const wa = `https://wa.me/${data.settings.whatsapp}?text=${encodeURIComponent(msg)}`;
+    return `<p class="ev__seats">${left === 1 ? 'Queda 1 lugar' : `Quedan ${left} lugares`} · cupos limitados</p>
+      <a class="btn btn--small ev__book" href="${wa}" target="_blank" rel="noopener">Reservar mi lugar</a>`;
+  }
+
   function renderEvents() {
     let list; let title;
     if (selected) {
@@ -133,6 +145,7 @@
               <h4>${esc(e.title)}</h4>
               <div class="ev__meta">${esc(cap(d.toLocaleDateString('es-AR', { weekday: 'long' })))}${e.time ? ` · ${esc(e.time)} hs` : ''}</div>
               ${e.description ? `<p>${esc(e.description)}</p>` : ''}
+              ${seatsHtml(e)}
             </div>
           </article>`;
         }).join('')

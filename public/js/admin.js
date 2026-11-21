@@ -181,9 +181,9 @@
   $('#eventForm').addEventListener('submit', guard(async (e) => {
     e.preventDefault();
     const ev = await api('/admin/events', 'POST', {
-      title: $('#evTitle').value, date: $('#evDate').value, time: $('#evTime').value, description: $('#evDesc').value,
+      title: $('#evTitle').value, date: $('#evDate').value, time: $('#evTime').value, description: $('#evDesc').value, capacity: $('#evCap').value,
     });
-    $('#evTitle').value = ''; $('#evTime').value = ''; $('#evDesc').value = '';
+    $('#evTitle').value = ''; $('#evTime').value = ''; $('#evDesc').value = ''; $('#evCap').value = '';
     await reload(); toast('Evento creado. Ahora podés armar la historia.');
     openStory(ev.id);
   }));
@@ -197,6 +197,9 @@
           <input data-field="date" type="date" value="${esc(e.date)}" aria-label="Fecha">
           <input data-field="time" type="time" value="${esc(e.time)}" aria-label="Hora">
           <input class="desc" data-field="description" value="${esc(e.description)}" maxlength="400" placeholder="Descripción" aria-label="Descripción">
+          <label class="seat">Entradas (total)<input data-field="capacity" type="number" min="0" step="1" value="${e.capacity ?? ''}" placeholder="Sin límite"></label>
+          <label class="seat">Ya reservadas<input data-field="reserved" type="number" min="0" step="1" value="${e.reserved || 0}"></label>
+          <span class="seat seat--left">${e.capacity == null ? 'Sin límite' : (e.capacity - (e.reserved || 0) > 0 ? `Quedan ${e.capacity - (e.reserved || 0)}` : 'AGOTADO')}</span>
           <div class="ev-actions">
             <button class="btn btn--small" data-act="story">📸 Historia</button>
             <button class="del" data-act="delev" title="Borrar evento" aria-label="Borrar evento">🗑</button>
@@ -301,6 +304,11 @@
     ctx.fillStyle = CREMA; ctx.font = '700 70px "Bodoni Moda", Georgia, serif';
     ctx.fillText(dateTxt, W / 2, y + 90);
     if (ev.time) { ctx.font = '500 52px "DM Mono", monospace'; ctx.fillText(`${ev.time} HS`, W / 2, y + 170); }
+    if (ev.capacity != null) {
+      ctx.font = '500 40px "DM Mono", monospace'; ctx.fillStyle = '#E8D8C0';
+      ctx.fillText(`CUPOS LIMITADOS · ${ev.capacity} LUGARES`, W / 2, y + (ev.time ? 240 : 170));
+      y += 70;
+    }
     if (ev.description) {
       ctx.font = '500 40px Archivo, sans-serif';
       wrapText(ctx, ev.description, W - 240).slice(0, 3).forEach((l, i) => ctx.fillText(l, W / 2, y + 260 + i * 56));
