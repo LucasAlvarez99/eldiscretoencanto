@@ -35,6 +35,12 @@ Sin Supabase guarda en `data/db.json`.
 - **Eventos**: crear eventos (aparecen en el calendario del sitio) y generar la historia 1080×1920 con la marca.
 - **Ajustes**: teléfono, WhatsApp, dirección, horarios, Maps.
 
+## Que la base nunca se pause (UptimeRobot)
+
+El plan gratis de Supabase pausa los proyectos sin actividad durante una semana. `GET /api/ping` hace una consulta mínima a la base (no devuelve datos) y responde `{"ok":true,...}`, o `503` si la base no contesta.
+
+En uptimerobot.com → **Add New Monitor** → tipo **HTTP(s)**, URL `https://eldiscretoencanto.vercel.app/api/ping`, intervalo 5 minutos y alertas por email.
+
 ## Instagram
 
 Requiere cuenta Business/Creator vinculada a una página de Facebook y una app de Meta con el permiso `instagram_content_publish`. Con un token de larga duración y el ID de la cuenta, el botón "Publicar en Instagram" sube la historia. La imagen se hospeda en el bucket `stories` de Supabase. Si no está configurado, la historia se descarga como PNG para subirla a mano.
